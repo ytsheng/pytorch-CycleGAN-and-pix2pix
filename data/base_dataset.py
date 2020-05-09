@@ -74,8 +74,24 @@ def get_params(opt, size):
     y = random.randint(0, np.maximum(0, new_h - opt.crop_size))
 
     flip = random.random() > 0.5
+    flip_lr = random.random() > 0.5
 
-    return {'crop_pos': (x, y), 'flip': flip}
+    params = {
+        'crop_pos': (x, y),
+        'flip': {
+            'should_flip': flip,
+            'flip_lr': flip_lr,
+        },
+    }
+
+    if not opt.no_affine:
+        params["affine"] = {
+            'degrees': random.randint(0, 180),
+            'translate': random.random() * 0.2,
+            'scale': random.randint(4, 10) / 10.0, # 0.4 to 1
+            'fillcolor': opt.fill_color if opt.fill_color is not None else 255,
+        }
+    return params
 
 
 def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, convert=True):
@@ -101,7 +117,27 @@ def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, conve
         if params is None:
             transform_list.append(transforms.RandomHorizontalFlip())
         elif params['flip']:
-            transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
+            transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip']["should_flip"], params['flip']["flip_lr"])))
+
+    if not opt.no_affine:
+        if params is None or "affine" not in params.keys():
+            pass
+        else:
+            affine_params = params["affine"]
+            color = affine_params["fillcolor"]
+            if grayscale:
+                fillcolor = (color, color)
+            else:
+                fillcolor = (color, color, color)
+            affine = transforms.Lambda(lambda img: transforms.functional.affine(
+                img,
+                angle=affine_params["degrees"],
+                translate=tuple([int(affine_params["translate"] * i) for i in img.size[:2]]),
+                scale=affine_params["scale"],
+                shear=0.0,
+                fillcolor=fillcolor)
+            )
+            transform_list.append(affine)
 
     if convert:
         transform_list += [transforms.ToTensor()]
@@ -141,10 +177,16 @@ def __crop(img, pos, size):
     return img
 
 
-def __flip(img, flip):
+def __flip(img, flip, lr):
     if flip:
-        return img.transpose(Image.FLIP_LEFT_RIGHT)
+        return img.transpose(Image.FLIP_LEFT_RIGHT if lr else Image.FLIP_TOP_BOTTOM)
     return img
+
+
+def __rotate(img, rotate):
+    if rotate:
+        return img.tr
+
 
 
 def __print_size_warning(ow, oh, w, h):

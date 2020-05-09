@@ -2,7 +2,7 @@ import os.path
 from data.base_dataset import BaseDataset, get_params, get_transform
 from data.image_folder import make_dataset
 from PIL import Image
-
+import numpy as np
 
 class AlignedDataset(BaseDataset):
     """A dataset class for paired image dataset.
@@ -53,6 +53,10 @@ class AlignedDataset(BaseDataset):
         A = A_transform(A)
         B = B_transform(B)
 
+        # transformed_dir = "/data/users/sash/pix2pix_cyclegan/pytorch-CycleGAN-and-pix2pix/transformed_images"
+        # filename = os.path.basename(AB_path)
+        # Image.fromarray(((A.numpy().transpose(1, 2, 0) * 0.5 + 0.5)*255).astype(np.uint8)).save(os.path.join(transformed_dir, "A_" +filename))
+        # Image.fromarray(((B.numpy().transpose(1, 2, 0) * 0.5 + 0.5)*255).astype(np.uint8)).save(os.path.join(transformed_dir, "B_" +filename))
         return {'A': A, 'B': B, 'A_paths': AB_path, 'B_paths': AB_path}
 
     def __len__(self):
